@@ -104,147 +104,147 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
-		85D2A4D720BB53120041D3B0 /* PBXContainerItemProxy */ = {
+		85D2A4EC20BBE6430041D3B0 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = OBJ_1 /* Project object */;
 			proxyType = 1;
-			remoteGlobalIDString = "SwiftString::SwiftString";
-			remoteInfo = SwiftString;
+			remoteGlobalIDString = "SSLService::SSLService";
+			remoteInfo = SSLService;
 		};
-		85D2A4D820BB53120041D3B0 /* PBXContainerItemProxy */ = {
+		85D2A4ED20BBE6430041D3B0 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = OBJ_1 /* Project object */;
 			proxyType = 1;
-			remoteGlobalIDString = "SwiftRandom::SwiftRandom";
-			remoteInfo = SwiftRandom;
+			remoteGlobalIDString = "Socket::Socket";
+			remoteInfo = Socket;
 		};
-		85D2A4D920BB53120041D3B0 /* PBXContainerItemProxy */ = {
+		85D2A4EE20BBE6430041D3B0 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = OBJ_1 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = "Socket::Socket";
+			remoteInfo = Socket;
+		};
+		85D2A4EF20BBE6430041D3B0 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = OBJ_1 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = "PackStream::PackStream";
+			remoteInfo = PackStream;
+		};
+		85D2A4F020BBE6430041D3B0 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = OBJ_1 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = "Result::Result";
 			remoteInfo = Result;
 		};
-		85D2A4DA20BB53120041D3B0 /* PBXContainerItemProxy */ = {
+		85D2A4F120BBE6430041D3B0 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = OBJ_1 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = "Bolt::Bolt";
 			remoteInfo = Bolt;
 		};
-		85D2A4DB20BB53120041D3B0 /* PBXContainerItemProxy */ = {
+		85D2A4F220BBE6430041D3B0 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = OBJ_1 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = "SSLService::SSLService";
 			remoteInfo = SSLService;
 		};
-		85D2A4DC20BB53120041D3B0 /* PBXContainerItemProxy */ = {
+		85D2A4F320BBE6430041D3B0 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = OBJ_1 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = "Socket::Socket";
 			remoteInfo = Socket;
 		};
-		85D2A4DD20BB53120041D3B0 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = OBJ_1 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = "Socket::Socket";
-			remoteInfo = Socket;
-		};
-		85D2A4DE20BB53120041D3B0 /* PBXContainerItemProxy */ = {
+		85D2A4F420BBE6430041D3B0 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = OBJ_1 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = "PackStream::PackStream";
 			remoteInfo = PackStream;
 		};
-		85D2A4DF20BB53120041D3B0 /* PBXContainerItemProxy */ = {
+		85D2A4F520BBE6430041D3B0 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = OBJ_1 /* Project object */;
 			proxyType = 1;
-			remoteGlobalIDString = "SSLService::SSLService";
-			remoteInfo = SSLService;
+			remoteGlobalIDString = "SwiftString::SwiftString";
+			remoteInfo = SwiftString;
 		};
-		85D2A4E020BB53120041D3B0 /* PBXContainerItemProxy */ = {
+		85D2A4F620BBE6430041D3B0 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = OBJ_1 /* Project object */;
 			proxyType = 1;
-			remoteGlobalIDString = "Socket::Socket";
-			remoteInfo = Socket;
+			remoteGlobalIDString = "SwiftRandom::SwiftRandom";
+			remoteInfo = SwiftRandom;
 		};
-		85D2A4E120BB53120041D3B0 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = OBJ_1 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = "PackStream::PackStream";
-			remoteInfo = PackStream;
-		};
-		85D2A4E220BB53120041D3B0 /* PBXContainerItemProxy */ = {
+		85D2A4F720BBE6430041D3B0 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = OBJ_1 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = "LoremSwiftum::LoremSwiftum";
 			remoteInfo = LoremSwiftum;
 		};
-		85D2A4E320BB53120041D3B0 /* PBXContainerItemProxy */ = {
+		85D2A4F820BBE6430041D3B0 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = OBJ_1 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = "SwiftString::SwiftString";
 			remoteInfo = SwiftString;
 		};
-		85D2A4E420BB53120041D3B0 /* PBXContainerItemProxy */ = {
+		85D2A4F920BBE6430041D3B0 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = OBJ_1 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = "SwiftRandom::SwiftRandom";
 			remoteInfo = SwiftRandom;
 		};
-		85D2A4E520BB53120041D3B0 /* PBXContainerItemProxy */ = {
+		85D2A4FA20BBE6430041D3B0 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = OBJ_1 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = "Theo::Theo";
 			remoteInfo = Theo;
 		};
-		85D2A4E620BB53120041D3B0 /* PBXContainerItemProxy */ = {
+		85D2A4FB20BBE6430041D3B0 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = OBJ_1 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = "Result::Result";
 			remoteInfo = Result;
 		};
-		85D2A4E720BB53120041D3B0 /* PBXContainerItemProxy */ = {
+		85D2A4FC20BBE6430041D3B0 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = OBJ_1 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = "Bolt::Bolt";
 			remoteInfo = Bolt;
 		};
-		85D2A4E820BB53120041D3B0 /* PBXContainerItemProxy */ = {
+		85D2A4FD20BBE6430041D3B0 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = OBJ_1 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = "SSLService::SSLService";
 			remoteInfo = SSLService;
 		};
-		85D2A4E920BB53120041D3B0 /* PBXContainerItemProxy */ = {
+		85D2A4FE20BBE6430041D3B0 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = OBJ_1 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = "Socket::Socket";
 			remoteInfo = Socket;
 		};
-		85D2A4EA20BB53120041D3B0 /* PBXContainerItemProxy */ = {
+		85D2A4FF20BBE6430041D3B0 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = OBJ_1 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = "PackStream::PackStream";
 			remoteInfo = PackStream;
 		};
-		85D2A4EB20BB531F0041D3B0 /* PBXContainerItemProxy */ = {
+		85D2A50020BBE6460041D3B0 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = OBJ_1 /* Project object */;
 			proxyType = 1;
@@ -476,10 +476,10 @@
 				OBJ_39 /* SwiftString 1.0.14 */,
 				OBJ_44 /* SwiftRandom 0.2.6 */,
 				OBJ_50 /* Result 3.2.4 */,
-				OBJ_55 /* Bolt 1.0.2 */,
+				OBJ_55 /* Bolt 1.0.3 */,
 				OBJ_66 /* SSLService 0.12.84 */,
 				OBJ_70 /* Socket 0.12.94 */,
-				OBJ_76 /* PackStream 1.0.1 */,
+				OBJ_76 /* PackStream 1.0.2 */,
 			);
 			name = Dependencies;
 			sourceTree = "<group>";
@@ -560,7 +560,7 @@
 			path = ".build/checkouts/Result.git-8684547452332391156/Result";
 			sourceTree = SOURCE_ROOT;
 		};
-		OBJ_55 /* Bolt 1.0.2 */ = {
+		OBJ_55 /* Bolt 1.0.3 */ = {
 			isa = PBXGroup;
 			children = (
 				OBJ_56 /* Package.swift */,
@@ -574,7 +574,7 @@
 				OBJ_64 /* SocketProtocol.swift */,
 				OBJ_65 /* UnencryptedSocket.swift */,
 			);
-			name = "Bolt 1.0.2";
+			name = "Bolt 1.0.3";
 			path = ".build/checkouts/Bolt-swift.git--3365735263234810436/Sources";
 			sourceTree = SOURCE_ROOT;
 		};
@@ -624,7 +624,7 @@
 			path = ".build/checkouts/BlueSocket.git-3162807777605905816/Sources/Socket";
 			sourceTree = SOURCE_ROOT;
 		};
-		OBJ_76 /* PackStream 1.0.1 */ = {
+		OBJ_76 /* PackStream 1.0.2 */ = {
 			isa = PBXGroup;
 			children = (
 				OBJ_77 /* Package.swift */,
@@ -639,7 +639,7 @@
 				OBJ_86 /* String.swift */,
 				OBJ_87 /* Structure.swift */,
 			);
-			name = "PackStream 1.0.1";
+			name = "PackStream 1.0.2";
 			path = ".build/checkouts/PackStream-swift.git--1716444669560187684/Sources";
 			sourceTree = SOURCE_ROOT;
 		};
@@ -659,16 +659,16 @@
 		OBJ_88 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				"LoremSwiftum::LoremSwiftum::Product" /* LoremSwiftum.framework */,
-				"PackStream::PackStream::Product" /* PackStream.framework */,
 				"SwiftString::SwiftString::Product" /* SwiftString.framework */,
+				"SwiftRandom::SwiftRandom::Product" /* SwiftRandom.framework */,
+				"SSLService::SSLService::Product" /* SSLService.framework */,
 				"Theo::TheoTests::Product" /* TheoTests.xctest */,
-				"Socket::Socket::Product" /* Socket.framework */,
 				"Result::Result::Product" /* Result.framework */,
 				"Theo::Theo::Product" /* Theo.framework */,
-				"SSLService::SSLService::Product" /* SSLService.framework */,
-				"SwiftRandom::SwiftRandom::Product" /* SwiftRandom.framework */,
+				"LoremSwiftum::LoremSwiftum::Product" /* LoremSwiftum.framework */,
+				"Socket::Socket::Product" /* Socket.framework */,
 				"Bolt::Bolt::Product" /* Bolt.framework */,
+				"PackStream::PackStream::Product" /* PackStream.framework */,
 			);
 			name = Products;
 			sourceTree = BUILT_PRODUCTS_DIR;
@@ -1226,107 +1226,107 @@
 		OBJ_117 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = "SSLService::SSLService" /* SSLService */;
-			targetProxy = 85D2A4DB20BB53120041D3B0 /* PBXContainerItemProxy */;
+			targetProxy = 85D2A4EC20BBE6430041D3B0 /* PBXContainerItemProxy */;
 		};
 		OBJ_119 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = "Socket::Socket" /* Socket */;
-			targetProxy = 85D2A4DD20BB53120041D3B0 /* PBXContainerItemProxy */;
+			targetProxy = 85D2A4EE20BBE6430041D3B0 /* PBXContainerItemProxy */;
 		};
 		OBJ_121 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = "PackStream::PackStream" /* PackStream */;
-			targetProxy = 85D2A4DE20BB53120041D3B0 /* PBXContainerItemProxy */;
+			targetProxy = 85D2A4EF20BBE6430041D3B0 /* PBXContainerItemProxy */;
 		};
 		OBJ_138 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = "SwiftString::SwiftString" /* SwiftString */;
-			targetProxy = 85D2A4D720BB53120041D3B0 /* PBXContainerItemProxy */;
+			targetProxy = 85D2A4F520BBE6430041D3B0 /* PBXContainerItemProxy */;
 		};
 		OBJ_140 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = "SwiftRandom::SwiftRandom" /* SwiftRandom */;
-			targetProxy = 85D2A4D820BB53120041D3B0 /* PBXContainerItemProxy */;
+			targetProxy = 85D2A4F620BBE6430041D3B0 /* PBXContainerItemProxy */;
 		};
 		OBJ_190 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = "Socket::Socket" /* Socket */;
-			targetProxy = 85D2A4DC20BB53120041D3B0 /* PBXContainerItemProxy */;
+			targetProxy = 85D2A4ED20BBE6430041D3B0 /* PBXContainerItemProxy */;
 		};
 		OBJ_264 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = "Result::Result" /* Result */;
-			targetProxy = 85D2A4D920BB53120041D3B0 /* PBXContainerItemProxy */;
+			targetProxy = 85D2A4F020BBE6430041D3B0 /* PBXContainerItemProxy */;
 		};
 		OBJ_265 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = "Bolt::Bolt" /* Bolt */;
-			targetProxy = 85D2A4DA20BB53120041D3B0 /* PBXContainerItemProxy */;
+			targetProxy = 85D2A4F120BBE6430041D3B0 /* PBXContainerItemProxy */;
 		};
 		OBJ_266 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = "SSLService::SSLService" /* SSLService */;
-			targetProxy = 85D2A4DF20BB53120041D3B0 /* PBXContainerItemProxy */;
+			targetProxy = 85D2A4F220BBE6430041D3B0 /* PBXContainerItemProxy */;
 		};
 		OBJ_267 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = "Socket::Socket" /* Socket */;
-			targetProxy = 85D2A4E020BB53120041D3B0 /* PBXContainerItemProxy */;
+			targetProxy = 85D2A4F320BBE6430041D3B0 /* PBXContainerItemProxy */;
 		};
 		OBJ_268 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = "PackStream::PackStream" /* PackStream */;
-			targetProxy = 85D2A4E120BB53120041D3B0 /* PBXContainerItemProxy */;
+			targetProxy = 85D2A4F420BBE6430041D3B0 /* PBXContainerItemProxy */;
 		};
 		OBJ_279 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = "Theo::TheoTests" /* TheoTests */;
-			targetProxy = 85D2A4EB20BB531F0041D3B0 /* PBXContainerItemProxy */;
+			targetProxy = 85D2A50020BBE6460041D3B0 /* PBXContainerItemProxy */;
 		};
 		OBJ_300 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = "LoremSwiftum::LoremSwiftum" /* LoremSwiftum */;
-			targetProxy = 85D2A4E220BB53120041D3B0 /* PBXContainerItemProxy */;
+			targetProxy = 85D2A4F720BBE6430041D3B0 /* PBXContainerItemProxy */;
 		};
 		OBJ_301 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = "SwiftString::SwiftString" /* SwiftString */;
-			targetProxy = 85D2A4E320BB53120041D3B0 /* PBXContainerItemProxy */;
+			targetProxy = 85D2A4F820BBE6430041D3B0 /* PBXContainerItemProxy */;
 		};
 		OBJ_302 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = "SwiftRandom::SwiftRandom" /* SwiftRandom */;
-			targetProxy = 85D2A4E420BB53120041D3B0 /* PBXContainerItemProxy */;
+			targetProxy = 85D2A4F920BBE6430041D3B0 /* PBXContainerItemProxy */;
 		};
 		OBJ_303 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = "Theo::Theo" /* Theo */;
-			targetProxy = 85D2A4E520BB53120041D3B0 /* PBXContainerItemProxy */;
+			targetProxy = 85D2A4FA20BBE6430041D3B0 /* PBXContainerItemProxy */;
 		};
 		OBJ_304 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = "Result::Result" /* Result */;
-			targetProxy = 85D2A4E620BB53120041D3B0 /* PBXContainerItemProxy */;
+			targetProxy = 85D2A4FB20BBE6430041D3B0 /* PBXContainerItemProxy */;
 		};
 		OBJ_305 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = "Bolt::Bolt" /* Bolt */;
-			targetProxy = 85D2A4E720BB53120041D3B0 /* PBXContainerItemProxy */;
+			targetProxy = 85D2A4FC20BBE6430041D3B0 /* PBXContainerItemProxy */;
 		};
 		OBJ_306 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = "SSLService::SSLService" /* SSLService */;
-			targetProxy = 85D2A4E820BB53120041D3B0 /* PBXContainerItemProxy */;
+			targetProxy = 85D2A4FD20BBE6430041D3B0 /* PBXContainerItemProxy */;
 		};
 		OBJ_307 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = "Socket::Socket" /* Socket */;
-			targetProxy = 85D2A4E920BB53120041D3B0 /* PBXContainerItemProxy */;
+			targetProxy = 85D2A4FE20BBE6430041D3B0 /* PBXContainerItemProxy */;
 		};
 		OBJ_308 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = "PackStream::PackStream" /* PackStream */;
-			targetProxy = 85D2A4EA20BB53120041D3B0 /* PBXContainerItemProxy */;
+			targetProxy = 85D2A4FF20BBE6430041D3B0 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 

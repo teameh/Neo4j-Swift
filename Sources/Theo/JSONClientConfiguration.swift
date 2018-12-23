@@ -38,4 +38,12 @@ public class JSONClientConfiguration: ClientConfigurationProtocol {
         }
     }
 
+    public var poolSize: ClosedRange<UInt> {
+        get {
+            let rmin = (json["minPoolSize"] as? UInt) ?? 1
+            let rmax = max(rmin, (json["maxPoolSize"] as? UInt) ?? 1)
+            return rmin...rmax
+        }
+    }
+
 }

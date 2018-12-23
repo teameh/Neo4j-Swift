@@ -28,16 +28,40 @@ public class Transaction {
     }
 }
 
+private struct InMemoryClientConfiguration: ClientConfigurationProtocol {
+    let hostname: String
+    let port: Int
+    let username: String
+    let password: String
+    let encrypted: Bool
+    let poolSize: ClosedRange<UInt>
+
+}
+
+private class ConnectionsWithProperties {
+    let connection: Connection
+    var inUse: Bool
+    
+    init(connection: Connection) {
+        self.connection = connection
+        self.inUse = false
+    }
+}
+
 typealias BoltRequest = Bolt.Request
 
 open class BoltClient {
 
-    private let hostname: String
-    private let port: Int
-    private let username: String
-    private let password: String
-    private let encrypted: Bool
-    private let connection: Connection
+    private let configuration: ClientConfigurationProtocol
+    
+    private var hostname: String { return configuration.hostname }
+    private var port: Int { return configuration.port }
+    private var username: String { return configuration.username }
+    private var password: String { return configuration.password }
+    private var encrypted: Bool { return configuration.encrypted }
+    
+    private var connections: [ConnectionsWithProperties]
+    private let connectionSemaphore: DispatchSemaphore
 
     private var currentTransaction: Transaction?
 
@@ -53,50 +77,54 @@ open class BoltClient {
 
     required public init(_ configuration: ClientConfigurationProtocol) throws {
 
-        self.hostname = configuration.hostname
-        self.port = configuration.port
-        self.username = configuration.username
-        self.password = configuration.password
-        self.encrypted = configuration.encrypted
+        self.configuration = configuration
 
-        let settings = ConnectionSettings(username: self.username, password: self.password, userAgent: "Theo 4.0.3")
 
+        self.connectionSemaphore = DispatchSemaphore(value: configuration.poolSize.upperBound)
+        self.connections = []
+        self.connections = try (0..<configuration.poolSize.lowerBound).map { _ in
+            return try self.generateConnectionWithProperties()
+        }
+    }
+    
+    private func generateConnectionWithProperties() throws -> ConnectionsWithProperties {
         let noConfig = SSLConfiguration(json: [:])
-        let configuration = EncryptedSocket.defaultConfiguration(sslConfig: noConfig,
-                                                                 allowHostToBeSelfSigned: true)
+        let sslConfiguration = EncryptedSocket.defaultConfiguration(sslConfig: noConfig,
+                                                                    allowHostToBeSelfSigned: true)
+
+        let settings = ConnectionSettings(
+            username: self.configuration.username,
+            password: self.configuration.password,
+            userAgent: "Theo 4.1.0")
 
         let socket = try EncryptedSocket(
-            hostname: hostname,
-            port: port,
-            configuration: configuration)
-
-        self.connection = Connection(
+            hostname: configuration.hostname,
+            port: configuration.port,
+            configuration: sslConfiguration)
+        
+        let connection = Connection(
             socket: socket,
             settings: settings)
+        
+        return ConnectionsWithProperties(connection: connection)
     }
 
-    required public init(hostname: String = "localhost", port: Int = 7687, username: String = "neo4j", password: String = "neo4j", encrypted: Bool = true) throws {
-
-        self.hostname = hostname
-        self.port = port
-        self.username = username
-        self.password = password
-        self.encrypted = encrypted
-
-        let settings = ConnectionSettings(username: username, password: password, userAgent: "Theo 4.0.3")
-
-        let noConfig = SSLConfiguration(json: [:])
-        let configuration = EncryptedSocket.defaultConfiguration(sslConfig: noConfig,
-            allowHostToBeSelfSigned: true)
-
-        let socket = try EncryptedSocket(
+    required public convenience init(
+        hostname: String = "localhost",
+        port: Int = 7687,
+        username: String = "neo4j",
+        password: String = "neo4j",
+        encrypted: Bool = true,
+        poolSize: ClosedRange<UInt> = 1...1) throws {
+        
+        let configuration = InMemoryClientConfiguration(
             hostname: hostname,
             port: port,
-            configuration: configuration)
-
-        self.connection = Connection(
-            socket: socket,
-            settings: settings)
+            username: username,
+            password: password,
+            encrypted: encrypted,
+            poolSize: poolSize)
+        try self.init(configuration)
     }
 
     /**
@@ -105,12 +133,13 @@ open class BoltClient {
      Asynchronous, so the function returns straight away. It is not defined what thread the completionblock will run on,
      so if you need it to run on main thread or another thread, make sure to dispatch to this that thread
 
+     - parameter connection: The connection that should connect
      - parameter completionBlock: Completion result-block that provides a Bool to indicate success, or an Error to explain what went wrong
      */
-    public func connect(completionBlock: ((Result<Bool, AnyError>) -> ())? = nil) {
+    public func connect(connection: Connection, completionBlock: ((Result<Bool, AnyError>) -> ())? = nil) {
 
         do {
-            try self.connection.connect { (connected) in
+            try connection.connect { (connected) in
                 completionBlock?(.success(connected))
             }
         } catch let error as Socket.Error {
@@ -132,22 +161,71 @@ open class BoltClient {
      */
     public func connectSync() -> Result<Bool, AnyError> {
 
+        let connection = getConnection()
         var theResult: Result<Bool, AnyError>! = nil
         let dispatchGroup = DispatchGroup()
         dispatchGroup.enter()
-        connect() { result in
+        connect(connection: connection) { result in
             theResult = result
             dispatchGroup.leave()
         }
         dispatchGroup.wait()
+        self.release(connection)
         return theResult
     }
 
     /**
      Disconnects from Neo4j.
      */
-    public func disconnect() {
-        connection.disconnect()
+    // !!! Does this make sense anymore?
+//    public func disconnect() {
+//        connection.disconnect()
+//    }
+    
+    private let connectionsMutationSemaphore = DispatchSemaphore(value: 1)
+
+    fileprivate func getConnection() -> Connection {
+        self.connectionSemaphore.wait()
+        connectionsMutationSemaphore.wait()
+        var connection: Connection? = nil
+        var i = 0
+        for alt in self.connections {
+            if alt.inUse == false {
+                alt.inUse = true
+                connection = alt.connection
+                self.connections[i] = alt
+                break
+            }
+            
+            i = i + 1
+        }
+        
+        if connection == nil {
+            let connectionWithProps = try! generateConnectionWithProperties() // !!!
+            connectionWithProps.inUse = true
+            self.connections.append(connectionWithProps)
+            connection = connectionWithProps.connection
+        }
+        
+        connectionsMutationSemaphore.signal()
+        
+        return connection! // !!!
+        
+    }
+    
+    fileprivate func release(_ connection: Connection) {
+        connectionsMutationSemaphore.wait()
+        var i = 0
+        for alt in self.connections {
+            if alt.connection == connection {
+                alt.inUse = false
+                self.connections[i] = alt
+                break
+            }
+            i = i + 1
+        }
+        connectionsMutationSemaphore.signal()
+        self.connectionSemaphore.signal()
     }
 
     /**
@@ -163,7 +241,8 @@ open class BoltClient {
      - parameter request: The Bolt Request that will be sent to Neo4j
      - parameter completionBlock: Completion result-block that provides a partial QueryResult, or an Error to explain what went wrong
      */
-    public func execute(request: Request, completionBlock: ((Result<(Bool, QueryResult), AnyError>) -> ())? = nil) {
+    public func execute(connection: Connection, request: Request, completionBlock: ((Result<(Bool, QueryResult), AnyError>) -> ())? = nil) {
+        
         do {
             try connection.request(request) { (successResponse, response) in
                 let queryResponse = parseResponses(responses: response)
@@ -193,13 +272,16 @@ open class BoltClient {
      - parameter completionBlock: Completion result-block that provides a complete QueryResult, or an Error to explain what went wrong
      */
     public func executeWithResult(request: Request, completionBlock: ((Result<(Bool, QueryResult), AnyError>) -> ())? = nil) {
+        let connection = getConnection()
         do {
             try connection.request(request) { (successResponse, response) in
                 if successResponse == false {
+                    self.release(connection)
                     completionBlock?(.failure(AnyError(BoltClientError.queryUnsuccessful)))
                 } else {
                     let queryResponse = parseResponses(responses: response)
-                    self.pullAll(partialQueryResult: queryResponse) { result in
+                    self.pullAll(connection: connection, partialQueryResult: queryResponse) { result in
+                        self.release(connection)
                         switch result {
                         case let .failure(error):
                             completionBlock?(.failure(AnyError(error)))
@@ -236,11 +318,11 @@ open class BoltClient {
      - parameter params: The named parameters to be included in the query. All parameter values need to conform to PackProtocol, as this is how they are encoded when sent via Bolt to Neo4j
      - parameter completionBlock: Completion result-block that provides a partial QueryResult, or an Error to explain what went wrong
      */
-    public func executeCypher(_ query: String, params: Dictionary<String,PackProtocol>? = nil, completionBlock: ((Result<(Bool, QueryResult), AnyError>) -> ())? = nil) {
+    public func executeCypher(_ query: String, params: Dictionary<String,PackProtocol>? = nil, connection: Connection, completionBlock: ((Result<(Bool, QueryResult), AnyError>) -> ())? = nil) {
 
         let cypherRequest = BoltRequest.run(statement: query, parameters: Map(dictionary: params ?? [:]))
 
-        execute(request: cypherRequest, completionBlock: completionBlock)
+        execute(connection: connection, request: cypherRequest, completionBlock: completionBlock)
 
     }
 
@@ -258,13 +340,14 @@ open class BoltClient {
     @discardableResult
     public func executeCypherSync(_ query: String, params: Dictionary<String,PackProtocol>? = nil) -> (Result<QueryResult, AnyError>) {
 
+        let connection = getConnection()
         var theResult: Result<QueryResult, AnyError>! = nil
         let dispatchGroup = DispatchGroup()
 
         // Perform query
         dispatchGroup.enter()
         var partialResult = QueryResult()
-        executeCypher(query, params: params) { result in
+        executeCypher(query, params: params, connection: connection) { result in
             switch result {
             case let .failure(error):
                 print("Error: \(error)")
@@ -286,7 +369,7 @@ open class BoltClient {
 
         // Stream and parse results
         dispatchGroup.enter()
-        pullAll(partialQueryResult: partialResult) { result in
+        pullAll(connection: connection, partialQueryResult: partialResult) { result in
             switch result {
             case let .failure(error):
                 print("Error: \(error)")
@@ -310,31 +393,31 @@ open class BoltClient {
 
 
     private func parseResponses(responses: [Response], result: QueryResult = QueryResult()) -> QueryResult {
-        let fields = (responses.flatMap { $0.items } .compactMap { ($0 as? Map)?.dictionary["fields"] }.first as? List)?.items.compactMap { $0 as? String }
+        let fields = (responses.flatMap { $0.items } .flatMap { ($0 as? Map)?.dictionary["fields"] }.first as? List)?.items.flatMap { $0 as? String }
         if let fields = fields {
             result.fields = fields
         }
 
-        let stats = responses.flatMap { $0.items.compactMap { $0 as? Map }.compactMap { QueryStats(data: $0) } }.first
+        let stats = responses.flatMap { $0.items.flatMap { $0 as? Map }.flatMap { QueryStats(data: $0) } }.first
         if let stats = stats {
             result.stats = stats
         }
 
-        if let resultAvailableAfter = (responses.flatMap { $0.items } .compactMap { ($0 as? Map)?.dictionary["result_available_after"] }.first?.uintValue()) {
+        if let resultAvailableAfter = (responses.flatMap { $0.items } .flatMap { ($0 as? Map)?.dictionary["result_available_after"] }.first?.uintValue()) {
             result.stats.resultAvailableAfter = resultAvailableAfter
         }
 
-        if let resultConsumedAfter = (responses.flatMap { $0.items } .compactMap { $0 as? Map }.first?.dictionary["result_consumed_after"]?.uintValue()) {
+        if let resultConsumedAfter = (responses.flatMap { $0.items } .flatMap { $0 as? Map }.first?.dictionary["result_consumed_after"]?.uintValue()) {
             result.stats.resultConsumedAfter = resultConsumedAfter
         }
 
-        if let type = (responses.flatMap { $0.items } .compactMap { $0 as? Map }.first?.dictionary["type"] as? String) {
+        if let type = (responses.flatMap { $0.items } .flatMap { $0 as? Map }.first?.dictionary["type"] as? String) {
             result.stats.type = type
         }
 
 
 
-        let candidateList = responses.flatMap { $0.items.compactMap { ($0 as? List)?.items } }.reduce( [], +)
+        let candidateList = responses.flatMap { $0.items.flatMap { ($0 as? List)?.items } }.reduce( [], +)
         var nodes = [UInt64:Node]()
         var relationships = [UInt64:Relationship]()
         var paths = [Path]()
@@ -422,7 +505,7 @@ open class BoltClient {
             return (key, rel)
         }
 
-        let updatedRelationships = Dictionary(uniqueKeysWithValues: relationships.compactMap(mapper))
+        let updatedRelationships = Dictionary(uniqueKeysWithValues: relationships.flatMap(mapper))
         result.relationships.merge(updatedRelationships) { (r, _) -> Relationship in return r }
 
         result.paths += paths
@@ -445,32 +528,35 @@ open class BoltClient {
      */
     public func executeAsTransaction(bookmark: String? = nil, transactionBlock: @escaping (_ tx: Transaction) throws -> ()) throws {
 
+        let connection = getConnection()
         let transactionGroup = DispatchGroup()
 
         let transaction = Transaction()
         transaction.commitBlock = { succeed in
             if succeed {
                 let commitRequest = BoltRequest.run(statement: "COMMIT", parameters: Map(dictionary: [:]))
-                try self.connection.request(commitRequest) { (success, response) in
-                    self.pullSynchronouslyAndIgnore()
+                try connection.request(commitRequest) { (success, response) in
+                    self.pullSynchronouslyAndIgnore(connection: connection)
                     if !success {
                         let error = BoltClientError.queryUnsuccessful
                         throw error
                     }
                     self.currentTransaction = nil
+                    self.release(connection)
                     transactionGroup.leave()
                 }
             } else {
 
                 let rollbackRequest = BoltRequest.run(statement: "ROLLBACK", parameters: Map(dictionary: [:]))
-                try self.connection.request(rollbackRequest) { (success, response) in
-                    self.pullSynchronouslyAndIgnore()
+                try connection.request(rollbackRequest) { (success, response) in
+                    self.pullSynchronouslyAndIgnore(connection: connection)
                     if !success {
                         print("Error rolling back transaction: \(response)")
                         let error = BoltClientError.queryUnsuccessful
                         throw error
                     }
                     self.currentTransaction = nil
+                    self.release(connection)
                     transactionGroup.leave()
                 }
             }
@@ -485,7 +571,7 @@ open class BoltClient {
         try connection.request(beginRequest) { (success, response) in
             if success {
 
-                pullSynchronouslyAndIgnore()
+                pullSynchronouslyAndIgnore(connection: connection)
 
                 try transactionBlock(transaction)
                 if transaction.autocommit == true {
@@ -503,15 +589,18 @@ open class BoltClient {
 
         transactionGroup.wait()
     }
-
-    internal func pullSynchronouslyAndIgnore() {
+    
+    /*
+    - parameter connection: The connection to perform the pullAll on - must be the same that the originating query was on
+     */
+    internal func pullSynchronouslyAndIgnore(connection: Connection) {
         let dispatchGroup = DispatchGroup()
         let pullRequest = BoltRequest.pullAll()
         dispatchGroup.enter()
         do {
-            try self.connection.request(pullRequest) { (success, response) in
+            try connection.request(pullRequest) { (success, response) in
 
-                if let bookmark = self.getBookmark() {
+                if let bookmark = self.getBookmark(connection: connection) {
                     currentTransaction?.bookmark = bookmark
                 }
                 dispatchGroup.leave()
@@ -532,13 +621,14 @@ open class BoltClient {
      Asynchronous, so the function returns straight away. It is not defined what thread the completionblock will run on,
      so if you need it to run on main thread or another thread, make sure to dispatch to this that thread
 
+     - parameter connection: The connection to perform the pullAll on - must be the same that the originating query was on
      - parameter partialQueryResult: If, for instance when executing the Cypher query, a partial QueryResult was given, pass it in here to have it fully populated in the completion result block
      - parameter completionBlock: Completion result-block that provides either a fully update QueryResult if a QueryResult was given, or a partial QueryResult if no prior QueryResult as given. If a failure has occurred, the Result contains an Error to explain what went wrong
      */
-    public func pullAll(partialQueryResult: QueryResult = QueryResult(), completionBlock: ((Result<(Bool, QueryResult), AnyError>) -> ())? = nil) {
+    public func pullAll(connection: Connection, partialQueryResult: QueryResult = QueryResult(), completionBlock: ((Result<(Bool, QueryResult), AnyError>) -> ())? = nil) {
         let pullRequest = BoltRequest.pullAll()
         do {
-            try self.connection.request(pullRequest) { (successResponse, responses) in
+            try connection.request(pullRequest) { (successResponse, responses) in
 
                 let result = parseResponses(responses: responses, result: partialQueryResult)
                 completionBlock?(.success((successResponse, result)))
@@ -553,7 +643,7 @@ open class BoltClient {
     }
 
     /// Get the current transaction bookmark
-    public func getBookmark() -> String? {
+    public func getBookmark(connection: Connection) -> String? {
         return connection.currentTransactionBookmark
     }
 
@@ -583,20 +673,22 @@ extension BoltClient { // Node functions
         return theResult
     }
 
-    public func createNode(node: Node, completionBlock: ((Result<Bool, AnyError>) -> ())?) {
+    public func createNode(node: Node, connection: Connection, completionBlock: ((Result<Bool, AnyError>) -> ())?) {
         let request = node.createRequest(withReturnStatement: false)
-        performRequestWithNoReturnNode(request: request, completionBlock: completionBlock)
+        performRequestWithNoReturnNode(connection: connection, request: request, completionBlock: completionBlock)
     }
 
     public func createNodeSync(node: Node) -> Result<Bool, AnyError> {
 
+        let connection = getConnection()
         let group = DispatchGroup()
         group.enter()
 
         var theResult: Result<Bool, AnyError> = .failure(AnyError(BoltClientError.unknownError))
-        createNode(node: node) { result in
+        createNode(node: node, connection: connection) { result in
             theResult = result
-            self.pullSynchronouslyAndIgnore()
+            self.pullSynchronouslyAndIgnore(connection: connection)
+            self.release(connection)
             group.leave()
         }
 
@@ -605,17 +697,21 @@ extension BoltClient { // Node functions
     }
 
     public func createAndReturnNodes(nodes: [Node], completionBlock: ((Result<[Node], AnyError>) -> ())?) {
+        let connection = getConnection()
         let request = nodes.createRequest()
-        execute(request: request) { response in
+        execute(connection: connection, request: request) { response in
             switch response {
             case let .failure(error):
+                self.release(connection)
                 completionBlock?(.failure(error))
             case let .success((isSuccess, partialQueryResult)):
                 if !isSuccess {
                     let error = AnyError(BoltClientError.queryUnsuccessful)
+                    self.release(connection)
                     completionBlock?(.failure(error))
                 } else {
-                    self.pullAll(partialQueryResult: partialQueryResult) { response in
+                    self.pullAll(connection: connection, partialQueryResult: partialQueryResult) { response in
+                        self.release(connection)
                         switch response {
                         case let .failure(error):
                             completionBlock?(.failure(error))
@@ -650,8 +746,10 @@ extension BoltClient { // Node functions
     }
 
     public func createNodes(nodes: [Node], completionBlock: ((Result<Bool, AnyError>) -> ())?) {
+        let connection = getConnection()
         let request = nodes.createRequest(withReturnStatement: false)
-        execute(request: request) { response in
+        execute(connection: connection, request: request) { response in
+            self.release(connection)
             switch response {
             case let .failure(error):
                 completionBlock?(.failure(error))
@@ -684,16 +782,20 @@ extension BoltClient { // Node functions
     }
 
     private func performRequestWithReturnNode(request: Request, completionBlock: ((Result<Node, AnyError>) -> ())?) {
-        execute(request: request) { response in
+        let connection = getConnection()
+        execute(connection: connection, request: request) { response in
             switch response {
             case let .failure(error):
+                self.release(connection)
                 completionBlock?(.failure(error))
             case let .success((isSuccess, partialQueryResult)):
                 if !isSuccess {
+                    self.release(connection)
                     let error = AnyError(BoltClientError.queryUnsuccessful)
                     completionBlock?(.failure(error))
                 } else {
-                    self.pullAll(partialQueryResult: partialQueryResult) { response in
+                    self.pullAll(connection: connection, partialQueryResult: partialQueryResult) { response in
+                        self.release(connection)
                         switch response {
                         case let .failure(error):
                             completionBlock?(.failure(error))
@@ -731,15 +833,15 @@ extension BoltClient { // Node functions
         return theResult
     }
 
-    public func updateNode(node: Node, completionBlock: ((Result<Bool, AnyError>) -> ())?) {
+    public func updateNode(node: Node, connection: Connection, completionBlock: ((Result<Bool, AnyError>) -> ())?) {
 
         let request = node.updateRequest()
-        performRequestWithNoReturnNode(request: request, completionBlock: completionBlock)
+        performRequestWithNoReturnNode(connection: connection, request: request, completionBlock: completionBlock)
     }
 
-    public func performRequestWithNoReturnNode(request: Request, completionBlock: ((Result<Bool, AnyError>) -> ())?) {
+    public func performRequestWithNoReturnNode(connection: Connection, request: Request, completionBlock: ((Result<Bool, AnyError>) -> ())?) {
 
-        execute(request: request) { response in
+        execute(connection: connection, request: request) { response in
             switch response {
             case let .failure(error):
                 completionBlock?(.failure(error))
@@ -751,23 +853,25 @@ extension BoltClient { // Node functions
 
     public func updateNodeSync(node: Node) -> Result<Bool, AnyError> {
 
+        let connection = getConnection()
         let group = DispatchGroup()
         group.enter()
 
         var theResult: Result<Bool, AnyError> = .failure(AnyError(BoltClientError.unknownError))
-        updateNode(node: node) { result in
+        updateNode(node: node, connection: connection) { result in
             theResult = result
             group.leave()
         }
 
         group.wait()
-        self.pullSynchronouslyAndIgnore()
+        self.pullSynchronouslyAndIgnore(connection: connection)
+        self.release(connection)
         return theResult
     }
 
-    public func updateAndReturnNodes(nodes: [Node], completionBlock: ((Result<[Node], AnyError>) -> ())?) {
+    public func updateAndReturnNodes(nodes: [Node], connection: Connection, completionBlock: ((Result<[Node], AnyError>) -> ())?) {
         let request = nodes.updateRequest()
-        execute(request: request) { response in
+        execute(connection: connection, request: request) { response in
             switch response {
             case let .failure(error):
                 completionBlock?(.failure(error))
@@ -776,7 +880,7 @@ extension BoltClient { // Node functions
                     let error = AnyError(BoltClientError.queryUnsuccessful)
                     completionBlock?(.failure(error))
                 } else {
-                    self.pullAll(partialQueryResult: partialQueryResult) { response in
+                    self.pullAll(connection: connection, partialQueryResult: partialQueryResult) { response in
                         switch response {
                         case let .failure(error):
                             completionBlock?(.failure(error))
@@ -797,12 +901,14 @@ extension BoltClient { // Node functions
 
     public func updateAndReturnNodesSync(nodes: [Node]) -> Result<[Node], AnyError> {
 
+        let connection = getConnection()
         let group = DispatchGroup()
         group.enter()
 
         var theResult: Result<[Node], AnyError> = .failure(AnyError(BoltClientError.unknownError))
-        updateAndReturnNodes(nodes: nodes) { result in
+        updateAndReturnNodes(nodes: nodes, connection: connection) { result in
             theResult = result
+            self.release(connection)
             group.leave()
         }
 
@@ -810,9 +916,9 @@ extension BoltClient { // Node functions
         return theResult
     }
 
-    public func updateNodes(nodes: [Node], completionBlock: ((Result<Bool, AnyError>) -> ())?) {
+    public func updateNodes(nodes: [Node], connection: Connection, completionBlock: ((Result<Bool, AnyError>) -> ())?) {
         let request = nodes.updateRequest(withReturnStatement: false)
-        execute(request: request) { response in
+        execute(connection: connection, request: request) { response in
             switch response {
             case let .failure(error):
                 completionBlock?(.failure(error))
@@ -824,12 +930,14 @@ extension BoltClient { // Node functions
 
     public func updateNodesSync(nodes: [Node]) -> Result<Bool, AnyError> {
 
+        let connection = getConnection()
         let group = DispatchGroup()
         group.enter()
 
         var theResult: Result<Bool, AnyError> = .failure(AnyError(BoltClientError.unknownError))
-        updateNodes(nodes: nodes) { result in
+        updateNodes(nodes: nodes, connection: connection) { result in
             theResult = result
+            self.release(connection)
             group.leave()
         }
 
@@ -838,19 +946,22 @@ extension BoltClient { // Node functions
     }
 
     //MARK: Delete
-    public func deleteNode(node: Node, completionBlock: ((Result<Bool, AnyError>) -> ())?) {
+    public func deleteNode(node: Node, connection: Connection, completionBlock: ((Result<Bool, AnyError>) -> ())?) {
         let request = node.deleteRequest()
-        performRequestWithNoReturnNode(request: request, completionBlock: completionBlock)
+        
+        performRequestWithNoReturnNode(connection: connection, request: request, completionBlock: completionBlock)
     }
 
     public func deleteNodeSync(node: Node) -> Result<Bool, AnyError> {
 
+        let connection = getConnection()
         let group = DispatchGroup()
         group.enter()
 
         var theResult: Result<Bool, AnyError> = .failure(AnyError(BoltClientError.unknownError))
-        deleteNode(node: node) { result in
+        deleteNode(node: node, connection: connection) { result in
             theResult = result
+            self.release(connection)
             group.leave()
         }
 
@@ -859,19 +970,21 @@ extension BoltClient { // Node functions
 
     }
 
-    public func deleteNodes(nodes: [Node], completionBlock: ((Result<Bool, AnyError>) -> ())?) {
+    public func deleteNodes(nodes: [Node], connection: Connection, completionBlock: ((Result<Bool, AnyError>) -> ())?) {
         let request = nodes.deleteRequest()
-        performRequestWithNoReturnNode(request: request, completionBlock: completionBlock)
+        performRequestWithNoReturnNode(connection: connection, request: request, completionBlock: completionBlock)
     }
 
     public func deleteNodesSync(nodes: [Node]) -> Result<Bool, AnyError> {
 
+        let connection = getConnection()
         let group = DispatchGroup()
         group.enter()
 
         var theResult: Result<Bool, AnyError> = .failure(AnyError(BoltClientError.unknownError))
-        deleteNodes(nodes: nodes) { result in
+        deleteNodes(nodes: nodes, connection: connection) { result in
             theResult = result
+            self.release(connection)
             group.leave()
         }
 
@@ -883,19 +996,23 @@ extension BoltClient { // Node functions
         let query = "MATCH (n) WHERE id(n) = {id} RETURN n"
         let params = ["id": Int64(id)]
 
+        let connection = getConnection()
         // Perform query
-        executeCypher(query, params: params) { result in
+        executeCypher(query, params: params, connection: connection) { result in
             switch result {
             case let .failure(error):
                 print("Error: \(error)")
+                self.release(connection)
                 completionBlock?(.failure(error))
             case let .success((isSuccess, _partialResult)):
                 if isSuccess == false {
+                    self.release(connection)
                     let error = AnyError(BoltClientError.queryUnsuccessful)
                     completionBlock?(.failure(error))
                 } else {
 
-                    self.pullAll(partialQueryResult: _partialResult) { result in
+                    self.pullAll(connection: connection, partialQueryResult: _partialResult) { result in
+                        self.release(connection)
                         switch result {
                         case let .failure(error):
                             completionBlock?(.failure(error))
@@ -967,19 +1084,21 @@ extension BoltClient { // Relationship functions
 
     // Create
 
-    public func relate(node: Node, to: Node, type: String, properties: [String:PackProtocol] = [:], completionBlock: ((Result<Relationship, AnyError>) -> ())?) {
+    public func relate(node: Node, to: Node, type: String, properties: [String:PackProtocol] = [:], connection: Connection, completionBlock: ((Result<Relationship, AnyError>) -> ())?) {
         let relationship = Relationship(fromNode: node, toNode: to, type: type, direction: .from, properties: properties)
         let request = relationship.createRequest()
-        performRequestWithReturnRelationship(request: request, completionBlock: completionBlock)
+        performRequestWithReturnRelationship(connection: connection, request: request, completionBlock: completionBlock)
     }
 
     public func relateSync(node: Node, to: Node, type: String, properties: [String:PackProtocol] = [:]) -> Result<Relationship, AnyError> {
+        let connection = getConnection()
         let group = DispatchGroup()
         group.enter()
 
         var theResult: Result<Relationship, AnyError> = .failure(AnyError(BoltClientError.unknownError))
-        relate(node: node, to: to, type: type, properties: properties) { result in
+        relate(node: node, to: to, type: type, properties: properties, connection: connection) { result in
             theResult = result
+            self.release(connection)
             group.leave()
         }
 
@@ -1093,14 +1212,14 @@ extension BoltClient { // Relationship functions
 
 
     //MARK: Update
-    public func updateAndReturnRelationship(relationship: Relationship, completionBlock: ((Result<Relationship, AnyError>) -> ())?) {
+    public func updateAndReturnRelationship(relationship: Relationship, connection: Connection, completionBlock: ((Result<Relationship, AnyError>) -> ())?) {
 
         let request = relationship.updateRequest()
-        performRequestWithReturnRelationship(request: request, completionBlock: completionBlock)
+        performRequestWithReturnRelationship(connection: connection, request: request, completionBlock: completionBlock)
     }
 
-    private func performRequestWithReturnRelationship(request: Request, completionBlock: ((Result<Relationship, AnyError>) -> ())?) {
-        execute(request: request) { response in
+    private func performRequestWithReturnRelationship(connection: Connection, request: Request, completionBlock: ((Result<Relationship, AnyError>) -> ())?) {
+        execute(connection: connection, request: request) { response in
             switch response {
             case let .failure(error):
                 completionBlock?(.failure(error))
@@ -1109,7 +1228,7 @@ extension BoltClient { // Relationship functions
                     let error = AnyError(BoltClientError.queryUnsuccessful)
                     completionBlock?(.failure(error))
                 } else {
-                    self.pullAll(partialQueryResult: partialQueryResult) { response in
+                    self.pullAll(connection: connection, partialQueryResult: partialQueryResult) { response in
                         switch response {
                         case let .failure(error):
                             completionBlock?(.failure(error))
@@ -1134,12 +1253,14 @@ extension BoltClient { // Relationship functions
 
     public func updateAndReturnRelationshipSync(relationship: Relationship) -> Result<Relationship, AnyError> {
 
+        let connection = getConnection()
         let group = DispatchGroup()
         group.enter()
 
         var theResult: Result<Relationship, AnyError> = .failure(AnyError(BoltClientError.unknownError))
-        updateAndReturnRelationship(relationship: relationship) { result in
+        updateAndReturnRelationship(relationship: relationship, connection: connection) { result in
             theResult = result
+            self.release(connection)
             group.leave()
         }
 
@@ -1147,20 +1268,19 @@ extension BoltClient { // Relationship functions
         return theResult
     }
 
-    public func updateRelationship(relationship: Relationship, completionBlock: ((Result<Bool, AnyError>) -> ())?) {
+    public func updateRelationship(relationship: Relationship, connection: Connection, completionBlock: ((Result<Bool, AnyError>) -> ())?) {
 
         let request = relationship.updateRequest()
-        performRequestWithNoReturnRelationship(request: request, completionBlock: completionBlock)
+        performRequestWithNoReturnRelationship(connection: connection, request: request, completionBlock: completionBlock)
     }
 
-    public func performRequestWithNoReturnRelationship(request: Request, completionBlock: ((Result<Bool, AnyError>) -> ())?) {
+    public func performRequestWithNoReturnRelationship(connection: Connection, request: Request, completionBlock: ((Result<Bool, AnyError>) -> ())?) {
 
-        execute(request: request) { response in
+        execute(connection: connection, request: request) { response in
             switch response {
             case let .failure(error):
                 completionBlock?(.failure(error))
             case let .success((isSuccess, _)):
-                self.pullSynchronouslyAndIgnore()
                 completionBlock?(.success(isSuccess))
             }
         }
@@ -1168,12 +1288,14 @@ extension BoltClient { // Relationship functions
 
     public func updateRelationshipSync(relationship: Relationship) -> Result<Bool, AnyError> {
 
+        let connection = getConnection()
         let group = DispatchGroup()
         group.enter()
 
         var theResult: Result<Bool, AnyError> = .failure(AnyError(BoltClientError.unknownError))
-        updateRelationship(relationship: relationship) { result in
+        updateRelationship(relationship: relationship, connection: connection) { result in
             theResult = result
+            self.release(connection)
             group.leave()
         }
 
@@ -1255,19 +1377,21 @@ extension BoltClient { // Relationship functions
     }*/
 
     //MARK: Delete
-    public func deleteRelationship(relationship: Relationship, completionBlock: ((Result<Bool, AnyError>) -> ())?) {
+    public func deleteRelationship(relationship: Relationship, connection: Connection, completionBlock: ((Result<Bool, AnyError>) -> ())?) {
         let request = relationship.deleteRequest()
-        performRequestWithNoReturnRelationship(request: request, completionBlock: completionBlock)
+        performRequestWithNoReturnRelationship(connection: connection, request: request, completionBlock: completionBlock)
     }
 
     public func deleteRelationshipSync(relationship: Relationship) -> Result<Bool, AnyError> {
 
+        let connection = getConnection()
         let group = DispatchGroup()
         group.enter()
 
         var theResult: Result<Bool, AnyError> = .failure(AnyError(BoltClientError.unknownError))
-        deleteRelationship(relationship: relationship) { result in
+        deleteRelationship(relationship: relationship, connection: connection) { result in
             theResult = result
+            self.release(connection)
             group.leave()
         }
 

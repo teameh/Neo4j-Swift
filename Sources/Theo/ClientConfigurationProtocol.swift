@@ -8,6 +8,7 @@ public protocol ClientConfigurationProtocol {
     var username: String { get }
     var password: String { get }
     var encrypted: Bool { get }
+    var poolSize: ClosedRange<UInt> { get }
 }
 
 extension ClientConfigurationProtocol {
@@ -30,5 +31,9 @@ extension ClientConfigurationProtocol {
 
     public var encrypted: Bool {
         return true
+    }
+    
+    public var poolSize: ClosedRange<Int> {
+        return 1...1
     }
 }
