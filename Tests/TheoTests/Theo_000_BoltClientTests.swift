@@ -44,7 +44,7 @@ class Theo_000_BoltClientTests: XCTestCase {
         case let .failure(error):
             if let theError = error.error as? Socket.Error,
                 theError.errorCode == -9806 { // retry aborted connection
-                client.disconnect()
+                // client.disconnect() // TODO: gone?
                 performConnectSync(client: client, completionBlock: completionBlock)
             } else {
                 XCTFail("Failed connecting with error: \(error)")
@@ -58,7 +58,9 @@ class Theo_000_BoltClientTests: XCTestCase {
 
 
     private func performConnect(client: BoltClient, completionBlock: ((Bool) -> ())? = nil) {
-        client.connect() { connectionResult in
+        let connection = client.getConnection()
+        defer { client.release(connection) }
+        client.connect(connection: connection) { connectionResult in
             switch connectionResult {
             case let .failure(error):
                 if let theError = error.error as? Socket.Error,
@@ -90,11 +92,13 @@ class Theo_000_BoltClientTests: XCTestCase {
                                     encrypted: configuration.encrypted)
         } else if Theo_000_BoltClientTests.runCount % 3 == 1 {
             class CustomConfig: ClientConfigurationProtocol {
+                
                 let hostname: String
                 let username: String
                 let password: String
                 let port: Int
                 let encrypted: Bool
+                let poolSize: ClosedRange<UInt>
                 
                 init(configuration: BoltConfig) {
                     hostname = configuration.hostname
@@ -102,6 +106,7 @@ class Theo_000_BoltClientTests: XCTestCase {
                     username = configuration.username
                     port = configuration.port
                     encrypted = configuration.encrypted
+                    poolSize = 1...5
                 }
             }
             client = try BoltClient(CustomConfig(configuration: configuration))
@@ -320,16 +325,18 @@ class Theo_000_BoltClientTests: XCTestCase {
 
     func testTransactionResultsInBookmark() throws {
         let client = try makeClient()
+        let connection = client.getConnection()
+        defer { client.release(connection) }
         let exp = self.expectation(description: "testTransactionResultsInBookmark")
 
         try client.executeAsTransaction() { (tx) in
-            client.executeCypher("CREATE (n:TheoTestNode { foo: \"bar\"})") { result in
+            client.executeCypher("CREATE (n:TheoTestNode { foo: \"bar\"})", connection: connection) { result in
                 switch result {
                 case let .failure(error):
                     print("Error in cypher: \(error)")
                 case let .success((success, partialQueryResult)):
                     if success {
-                        client.pullAll(partialQueryResult: partialQueryResult) { result in
+                        client.pullAll(connection: connection, partialQueryResult: partialQueryResult) { result in
                             switch result {
                             case let .failure(error):
                                 print("Error in cypher: \(error)")
@@ -358,7 +365,7 @@ class Theo_000_BoltClientTests: XCTestCase {
             exp.fulfill()
         }
 
-        if let bookmark = client.getBookmark() {
+        if let bookmark = client.getBookmark(connection: connection) {
             XCTAssertNotEqual("", bookmark)
 
             #if swift(>=4.0)
@@ -388,12 +395,18 @@ class Theo_000_BoltClientTests: XCTestCase {
         figureOutNumberOfKingArthurs.enter()
         var numberOfKingArthurs = -1
 
-        client.executeCypher("MATCH (a:Person) WHERE a.name = {name} RETURN count(a) AS count", params: ["name": "Arthur"])  { result in
+        let connection = client.getConnection()
+        defer { client.release(connection) }
+
+        client.executeCypher(
+            "MATCH (a:Person) WHERE a.name = {name} RETURN count(a) AS count",
+            params: ["name": "Arthur"],
+            connection: connection)  { result in
 
             XCTAssertTrue(result.isSuccess)
             XCTAssertTrue(result.value!.0)
 
-            client.pullAll(partialQueryResult: result.value!.1) { response in
+                client.pullAll(connection: connection, partialQueryResult: result.value!.1) { response in
                 switch result {
                 case .failure:
                     XCTFail("Failed to pull response data")
@@ -437,7 +450,7 @@ class Theo_000_BoltClientTests: XCTestCase {
 
 
             client.executeCypher("MATCH (a:Person) WHERE a.name = {name} " +
-            "RETURN a.name AS name, a.title AS title", params: ["name": "Arthur"])  { result in
+            "RETURN a.name AS name, a.title AS title", params: ["name": "Arthur"], connection: connection)  { result in
 
                 XCTAssertTrue(result.isSuccess)
                 XCTAssertTrue(result.value!.0)
@@ -449,7 +462,7 @@ class Theo_000_BoltClientTests: XCTestCase {
                 XCTAssertEqual(0, queryResult.paths.count)
                 XCTAssertEqual(0, queryResult.rows.count)
 
-                client.pullAll(partialQueryResult: queryResult) { result in
+                client.pullAll(connection: connection, partialQueryResult: queryResult) { result in
 
                     switch result {
                     case .failure(_):
@@ -714,7 +727,9 @@ class Theo_000_BoltClientTests: XCTestCase {
         let exp = expectation(description: "testCreatePropertylessNodeAsync")
         
         let client = try makeClient()
-        client.createNode(node: node) { (result) in
+        let connection = client.getConnection()
+        defer { client.release(connection) }
+        client.createNode(node: node, connection: connection) { (result) in
             switch result {
             case let .failure(error):
                 XCTFail(error.localizedDescription)
@@ -1359,12 +1374,15 @@ CREATE (bb)-[:HAS_ALCOHOLPERCENTAGE]->(ap),
         }
     }
     
+    // TODO: Remove?
+    /*
     func testDisconnect() throws {
         let client = try makeClient()
         client.disconnect()
         let result = client.executeCypherSync("RETURN 1")
         XCTAssertFalse(result.isSuccess)
     }
+     */
 
     func testRecord() throws {
         let client = try makeClient()
@@ -1843,7 +1861,7 @@ CREATE (bb)-[:HAS_ALCOHOLPERCENTAGE]->(ap),
         ("testUpdateNodesWithResult", testUpdateNodesWithResult),
         ("testUpdateRelationship", testUpdateRelationship),
         ("testUpdateRelationshipNoReturn", testUpdateRelationshipNoReturn),
-        ("testDisconnect", testDisconnect),
+        // ("testDisconnect", testDisconnect), //TODO:
         ("testRecord", testRecord),
         ("testFindNodeById", testFindNodeById),
         ("testFindNodeByLabels", testFindNodeByLabels),

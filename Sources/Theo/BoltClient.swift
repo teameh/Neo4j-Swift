@@ -80,7 +80,9 @@ open class BoltClient {
         self.configuration = configuration
 
 
-        self.connectionSemaphore = DispatchSemaphore(value: configuration.poolSize.upperBound)
+        let semaphoreValue: Int = configuration.poolSize.upperBound
+        print("semaphoreValue: \(semaphoreValue)")
+        self.connectionSemaphore = DispatchSemaphore(value: semaphoreValue)
         self.connections = []
         self.connections = try (0..<configuration.poolSize.lowerBound).map { _ in
             return try self.generateConnectionWithProperties()
@@ -184,7 +186,11 @@ open class BoltClient {
     
     private let connectionsMutationSemaphore = DispatchSemaphore(value: 1)
 
-    fileprivate func getConnection() -> Connection {
+    /**
+     * Get a connection to perform async operations upon. Remember to release it when you're done with it
+     */
+    public func getConnection() -> Connection {
+        print("Get connection:")
         self.connectionSemaphore.wait()
         connectionsMutationSemaphore.wait()
         var connection: Connection? = nil
@@ -204,8 +210,11 @@ open class BoltClient {
             let connectionWithProps = try! generateConnectionWithProperties() // !!!
             connectionWithProps.inUse = true
             self.connections.append(connectionWithProps)
+            i = i + 1
             connection = connectionWithProps.connection
         }
+        
+        print("Got connection #\(i)")
         
         connectionsMutationSemaphore.signal()
         
@@ -213,7 +222,10 @@ open class BoltClient {
         
     }
     
-    fileprivate func release(_ connection: Connection) {
+    /*
+     * Release the open connection
+     */
+    public func release(_ connection: Connection) {
         connectionsMutationSemaphore.wait()
         var i = 0
         for alt in self.connections {
@@ -224,6 +236,7 @@ open class BoltClient {
             }
             i = i + 1
         }
+        print("Released connection #\(i)")
         connectionsMutationSemaphore.signal()
         self.connectionSemaphore.signal()
     }
@@ -370,6 +383,8 @@ open class BoltClient {
         // Stream and parse results
         dispatchGroup.enter()
         pullAll(connection: connection, partialQueryResult: partialResult) { result in
+            self.release(connection)
+
             switch result {
             case let .failure(error):
                 print("Error: \(error)")
@@ -549,6 +564,7 @@ open class BoltClient {
 
                 let rollbackRequest = BoltRequest.run(statement: "ROLLBACK", parameters: Map(dictionary: [:]))
                 try connection.request(rollbackRequest) { (success, response) in
+                    defer { self.release(connection) }
                     self.pullSynchronouslyAndIgnore(connection: connection)
                     if !success {
                         print("Error rolling back transaction: \(response)")
@@ -556,7 +572,6 @@ open class BoltClient {
                         throw error
                     }
                     self.currentTransaction = nil
-                    self.release(connection)
                     transactionGroup.leave()
                 }
             }
@@ -745,11 +760,9 @@ extension BoltClient { // Node functions
         return theResult
     }
 
-    public func createNodes(nodes: [Node], completionBlock: ((Result<Bool, AnyError>) -> ())?) {
-        let connection = getConnection()
+    public func createNodes(nodes: [Node], connection: Connection, completionBlock: ((Result<Bool, AnyError>) -> ())?) {
         let request = nodes.createRequest(withReturnStatement: false)
         execute(connection: connection, request: request) { response in
-            self.release(connection)
             switch response {
             case let .failure(error):
                 completionBlock?(.failure(error))
@@ -761,12 +774,15 @@ extension BoltClient { // Node functions
 
     public func createNodesSync(nodes: [Node]) -> Result<Bool, AnyError> {
 
+        let connection = getConnection()
         let group = DispatchGroup()
         group.enter()
 
         var theResult: Result<Bool, AnyError> = .failure(AnyError(BoltClientError.unknownError))
-        createNodes(nodes: nodes) { result in
+        createNodes(nodes: nodes, connection: connection) { result in
             theResult = result
+            self.pullSynchronouslyAndIgnore(connection: connection) // ignore result
+            self.release(connection)
             group.leave()
         }
 
@@ -984,6 +1000,7 @@ extension BoltClient { // Node functions
         var theResult: Result<Bool, AnyError> = .failure(AnyError(BoltClientError.unknownError))
         deleteNodes(nodes: nodes, connection: connection) { result in
             theResult = result
+            self.pullSynchronouslyAndIgnore(connection: connection) // ignore result
             self.release(connection)
             group.leave()
         }

@@ -274,7 +274,6 @@
 		OBJ_29 /* Theo_001_LotsOfDataScenario.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theo_001_LotsOfDataScenario.swift; sourceTree = "<group>"; };
 		OBJ_30 /* Theo_002_CollectExample.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theo_002_CollectExample.swift; sourceTree = "<group>"; };
 		OBJ_31 /* XCTestManifests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XCTestManifests.swift; sourceTree = "<group>"; };
-		OBJ_32 /* build.old */ = {isa = PBXFileReference; lastKnownFileType = folder; path = build.old; sourceTree = SOURCE_ROOT; };
 		OBJ_33 /* TheoSpace.xcworkspace */ = {isa = PBXFileReference; lastKnownFileType = wrapper.workspace; path = TheoSpace.xcworkspace; sourceTree = SOURCE_ROOT; };
 		OBJ_34 /* Playgrounds */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Playgrounds; sourceTree = SOURCE_ROOT; };
 		OBJ_37 /* Package.swift */ = {isa = PBXFileReference; explicitFileType = sourcecode.swift; name = Package.swift; path = "/Users/niklas/Swift4/neo4j-ios/.build/checkouts/LoremSwiftum.git-277912342365654960/Package.swift"; sourceTree = "<group>"; };
@@ -526,19 +525,17 @@
 			path = ".build/checkouts/SwiftRandom.git--6412955993590123727/Sources/SwiftRandom";
 			sourceTree = SOURCE_ROOT;
 		};
-		OBJ_5 /*  */ = {
+		OBJ_5 = {
 			isa = PBXGroup;
 			children = (
 				OBJ_6 /* Package.swift */,
 				OBJ_7 /* Sources */,
 				OBJ_25 /* Tests */,
-				OBJ_32 /* build.old */,
 				OBJ_33 /* TheoSpace.xcworkspace */,
 				OBJ_34 /* Playgrounds */,
 				OBJ_35 /* Dependencies */,
 				OBJ_88 /* Products */,
 			);
-			name = "";
 			sourceTree = "<group>";
 		};
 		OBJ_50 /* Result 3.2.4 */ = {
@@ -997,7 +994,7 @@
 			knownRegions = (
 				en,
 			);
-			mainGroup = OBJ_5 /*  */;
+			mainGroup = OBJ_5;
 			productRefGroup = OBJ_88 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
