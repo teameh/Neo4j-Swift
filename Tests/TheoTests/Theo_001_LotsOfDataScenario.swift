@@ -4,14 +4,13 @@ import PackStream
 import Socket
 import Result
 import Bolt
-import LoremSwiftum
 
 @testable import Theo
 
 class Theo_001_LotsOfDataScenario: XCTestCase {
-    
-    let label = Lorem.word
-    
+
+    let label = "Lorem.word"
+
     override func setUp() {
         super.setUp()
         self.continueAfterFailure = false
@@ -37,7 +36,7 @@ class Theo_001_LotsOfDataScenario: XCTestCase {
         }
     }
 
-    let data: [String] = Lorem.sentences(count: 30).split(".")
+    let data: [String] = ["Lorem.sentences(count: 30).split(".")"]
     private var pos = 0
     private var sentence: String {
         pos = pos + 1
